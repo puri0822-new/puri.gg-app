@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>puri.gg Mobile — 중간 발표</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+  <style>
+    :root {
+      --gold: #c8aa6e;
+      --gold-dim: #9a7d4a;
+      --bg: #0a0e1a;
+      --card: #0f1320;
+      --border: #1e2740;
+      --muted: #5c6478;
+      --text: #e8e0d0;
+      --green: #4caf87;
+      --red: #e05c5c;
+    }
+
+    .reveal-viewport { background: var(--bg); }
+    .reveal {
+      font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      color: var(--gold);
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: -0.02em;
+    }
+    .reveal p, .reveal li { color: var(--text); }
+    .reveal .slides section { padding: 24px 60px; }
+
+    /* ── Title ── */
+    .title-slide { text-align: center !important; }
+    .title-logo {
+      font-size: 4em;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 0;
+    }
+    .title-sub-word {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 4px;
+    }
+    .gold-line {
+      width: 80px;
+      height: 3px;
+      background: var(--gold);
+      margin: 18px auto;
+    }
+    .title-desc {
+      font-size: 0.82em;
+      color: var(--muted);
+      margin: 0 0 22px;
+    }
+    .badge-wrap { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+    .badge {
+      display: inline-block;
+      background: var(--border);
+      border: 1px solid var(--gold-dim);
+      color: var(--gold);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.7em;
+      font-weight: 600;
+    }
+    .title-date {
+      font-size: 0.58em;
+      color: var(--muted);
+      margin-top: 26px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.58em;
+      color: var(--gold-dim);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    /* ── Compare cards ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 16px;
+    }
+    .compare-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+    }
+    .compare-card.bad  { border-top: 3px solid var(--red); }
+    .compare-card.good { border-top: 3px solid var(--green); }
+    .compare-card h3 {
+      font-size: 0.82em !important;
+      margin: 0 0 14px !important;
+    }
+    .compare-card.bad  h3 { color: var(--red)   !important; }
+    .compare-card.good h3 { color: var(--green) !important; }
+    .compare-card ul { list-style: none; padding: 0; margin: 0; }
+    .compare-card li {
+      font-size: 0.72em;
+      color: var(--text);
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .compare-card li:last-child { border-bottom: none; }
+
+    /* ── WBS ── */
+    .wbs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .wbs-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .wbs-card.done    { border-left: 4px solid var(--green); }
+    .wbs-card.active  { border-left: 4px solid var(--gold); background: #111828; }
+    .wbs-card.pending { border-left: 4px solid var(--muted); opacity: 0.55; }
+    .wbs-week {
+      font-size: 0.58em;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .wbs-title {
+      font-size: 0.76em;
+      font-weight: 600;
+      color: var(--text);
+      margin: 5px 0 10px;
+      line-height: 1.35;
+    }
+    .wbs-status {
+      font-size: 0.65em;
+      font-weight: 700;
+    }
+    .done    .wbs-status { color: var(--green); }
+    .active  .wbs-status { color: var(--gold); }
+    .pending .wbs-status { color: var(--muted); }
+    .wbs-bar {
+      height: 4px;
+      border-radius: 2px;
+      margin-top: 10px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .wbs-bar-fill { height: 100%; border-radius: 2px; }
+    .done    .wbs-bar-fill { width: 100%; background: var(--green); }
+    .active  .wbs-bar-fill { width: 55%;  background: var(--gold); }
+    .pending .wbs-bar-fill { width: 0%; }
+
+    /* ── Mermaid ── */
+    .mermaid-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 16px;
+    }
+    .mermaid svg { max-width: 100%; max-height: 340px; }
+
+    /* ── Step list ── */
+    .step-list { list-style: none; padding: 0; margin-top: 18px; }
+    .step-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82em;
+      color: var(--text);
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-num {
+      background: var(--gold);
+      color: var(--bg);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.78em;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Progress bar ── */
+    .reveal .progress { color: var(--gold); }
+  </style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ① Title -->
+    <section class="title-slide">
+      <div class="title-logo">puri.gg</div>
+      <div class="title-sub-word">Mobile</div>
+      <div class="gold-line"></div>
+      <p class="title-desc">LoL 내전 전적 관리 웹 서비스 &rarr; 모바일 앱 전환 프로젝트</p>
+      <div class="badge-wrap">
+        <span class="badge">React Native · Expo</span>
+        <span class="badge">Firebase</span>
+        <span class="badge">TanStack Query</span>
+        <span class="badge">NativeWind</span>
+      </div>
+      <p class="title-date">2026.05 &nbsp;|&nbsp; 중간 발표</p>
+    </section>
+
+    <!-- ② Problem & Vision -->
+    <section>
+      <div class="section-label">문제 정의 &amp; 비전</div>
+      <h2 style="font-size:1.2em; margin-bottom:6px;">
+        경기 직후, 전적 확인이 불편하지 않으셨나요?
+      </h2>
+      <p style="font-size:0.68em; color:var(--muted); margin:0 0 4px;">
+        실사용 패턴 분석 결과 &mdash;
+        <strong style="color:var(--gold);">경기 중 · 직후 모바일 기기로 전적 확인하는 빈도가 압도적</strong>
+      </p>
+      <div class="compare-grid">
+        <div class="compare-card bad">
+          <h3>지금 (웹)</h3>
+          <ul>
+            <li><span>&#127760;</span> 브라우저 열고 URL 직접 입력</li>
+            <li><span>&#128432;</span> 마우스 기반 UI, 터치 조작 불편</li>
+            <li><span>&#128277;</span> 경기 결과 푸시 알림 없음</li>
+            <li><span>&#128245;</span> 오프라인 조회 불가</li>
+          </ul>
+        </div>
+        <div class="compare-card good">
+          <h3>목표 (앱)</h3>
+          <ul>
+            <li><span>&#128241;</span> 홈 화면 아이콘 원터치 접근</li>
+            <li><span>&#128076;</span> 스와이프 · 터치 네이티브 UX</li>
+            <li><span>&#128276;</span> 경기 결과 Push Notification</li>
+            <li><span>&#128190;</span> TanStack Query 캐시 오프라인 지원</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ Architecture -->
+    <section>
+      <div class="section-label">설계</div>
+      <h2 style="font-size:1.2em; margin-bottom:4px;">시스템 아키텍처</h2>
+      <p style="font-size:0.65em; color:var(--muted); margin:0 0 4px;">
+        단일 코드베이스 &mdash; iOS · Android 동시 지원
+      </p>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+graph LR
+    subgraph Client["클라이언트 (Expo)"]
+        UI["Expo Router\n+ NativeWind"]
+        Q["TanStack Query\n커스텀 훅"]
+        Utils["ELO · CP\n비즈니스 로직"]
+    end
+    subgraph Firebase["백엔드 (Firebase)"]
+        FS["Cloud Firestore\nmatches · elo_histories"]
+        Auth["Firebase Auth\n관리자 인증"]
+    end
+    DD["Data Dragon\n챔피언 이미지 CDN"]
+
+    UI --> Q
+    Q --> Utils
+    Q <--> FS
+    Q <--> Auth
+    UI --> DD
+        </pre>
+      </div>
+    </section>
+
+    <!-- ④ WBS Progress -->
+    <section>
+      <div class="section-label">진행 현황</div>
+      <h2 style="font-size:1.2em; margin-bottom:4px;">WBS &mdash; 6주 개발 일정</h2>
+      <p style="font-size:0.65em; color:var(--muted); margin:0 0 4px;">
+        전체 화면 구현 완료 &nbsp;&middot;&nbsp; 현재 <strong style="color:var(--gold);">Week 5</strong> 테스트 &amp; UX 개선 단계
+      </p>
+      <div class="wbs-grid">
+        <div class="wbs-card done">
+          <div class="wbs-week">Week 1</div>
+          <div class="wbs-title">환경 설정 &amp; 기반 구축</div>
+          <div class="wbs-status">&#10003; 완료</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+        <div class="wbs-card done">
+          <div class="wbs-week">Week 2</div>
+          <div class="wbs-title">공통 컴포넌트 &amp; 네비게이션</div>
+          <div class="wbs-status">&#10003; 완료</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+        <div class="wbs-card done">
+          <div class="wbs-week">Week 3</div>
+          <div class="wbs-title">핵심 화면 UI 개발</div>
+          <div class="wbs-status">&#10003; 완료</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+        <div class="wbs-card done">
+          <div class="wbs-week">Week 4</div>
+          <div class="wbs-title">Firebase 연동 &amp; 비즈니스 로직</div>
+          <div class="wbs-status">&#10003; 완료</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+        <div class="wbs-card active">
+          <div class="wbs-week">Week 5 &nbsp;·&nbsp; 현재</div>
+          <div class="wbs-title">통합 테스트 &amp; UX 개선</div>
+          <div class="wbs-status">&#8635; 진행 중</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+        <div class="wbs-card pending">
+          <div class="wbs-week">Week 6</div>
+          <div class="wbs-title">EAS 빌드 &amp; 배포 준비</div>
+          <div class="wbs-status">&#9210; 예정</div>
+          <div class="wbs-bar"><div class="wbs-bar-fill"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑤ Closing -->
+    <section class="title-slide">
+      <div class="section-label">다음 단계</div>
+      <h2 style="font-size:1.2em; text-align:left; margin-bottom:0;">남은 2주 계획</h2>
+      <ul class="step-list" style="text-align:left;">
+        <li>
+          <div class="step-num">5</div>
+          <div>
+            <strong style="color:var(--gold);">통합 테스트</strong><br>
+            <span style="color:var(--muted); font-size:0.9em;">iOS · Android 시뮬레이터 검증 &nbsp;/&nbsp; Pull-to-Refresh · 오프라인 모드 확인 &nbsp;/&nbsp; UX 사용성 테스트</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">6</div>
+          <div>
+            <strong style="color:var(--gold);">EAS Build · 배포</strong><br>
+            <span style="color:var(--muted); font-size:0.9em;">TestFlight 내부 테스트 &nbsp;/&nbsp; Google Play 내부 트랙 배포 &nbsp;/&nbsp; 문서화 완성</span>
+          </div>
+        </li>
+      </ul>
+      <div style="margin-top:36px;">
+        <div style="font-size:2em; font-weight:900; color:var(--gold);">puri.gg Mobile</div>
+        <div style="font-size:0.72em; color:var(--muted); margin-top:6px;">감사합니다</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#0f1320',
+      primaryColor: '#1e2740',
+      primaryTextColor: '#e8e0d0',
+      primaryBorderColor: '#c8aa6e',
+      lineColor: '#c8aa6e',
+      secondaryColor: '#0f1320',
+      tertiaryColor: '#0f1320',
+      clusterBkg: '#0a0e1a',
+      clusterBorder: '#1e2740',
+      titleColor: '#c8aa6e',
+    },
+    flowchart: { curve: 'basis', padding: 16 },
+  });
+
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+  });
+
+  Reveal.on('ready', () => {
+    mermaid.run({ querySelector: '.mermaid' });
+  });
+</script>
+</body>
+</html>
