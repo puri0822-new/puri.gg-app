@@ -271,23 +271,26 @@
       </p>
       <div class="mermaid-wrap">
         <pre class="mermaid">
-graph LR
-    subgraph Client["클라이언트 (Expo)"]
-        UI["Expo Router\n+ NativeWind"]
-        Q["TanStack Query\n커스텀 훅"]
-        Utils["ELO · CP\n비즈니스 로직"]
-    end
-    subgraph Firebase["백엔드 (Firebase)"]
-        FS["Cloud Firestore\nmatches · elo_histories"]
-        Auth["Firebase Auth\n관리자 인증"]
-    end
-    DD["Data Dragon\n챔피언 이미지 CDN"]
-
-    UI --> Q
-    Q --> Utils
-    Q <--> FS
-    Q <--> Auth
-    UI --> DD
+graph TD
+  subgraph Client["클라이언트 (React Native · Expo)"]
+    UI["화면 레이어 (Expo Router + NativeWind)"]
+    Hooks["상태/데이터 레이어 (TanStack Query 커스텀 훅)"]
+    Utils["비즈니스 로직 (ELO · CP · 통계 유틸)"]
+    Cache["로컬 캐시 (TanStack Query Memory Cache)"]
+  end
+  subgraph Firebase["백엔드 (Firebase)"]
+    Firestore["Cloud Firestore (matches · elo_histories)"]
+    Auth["Firebase Auth (관리자 인증)"]
+  end
+  subgraph External["외부 서비스"]
+    DDragon["Riot Data Dragon (챔피언 이미지 CDN)"]
+  end
+  UI --> Hooks
+  Hooks --> Utils
+  Hooks --> Cache
+  Hooks --> Firestore
+  Hooks --> Auth
+  UI --> DDragon
         </pre>
       </div>
     </section>
