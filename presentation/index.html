@@ -231,31 +231,36 @@
     <!-- ② Problem & Vision -->
     <section>
       <div class="section-label">문제 정의 &amp; 비전</div>
-      <h2 style="font-size:1.2em; margin-bottom:6px;">
-        경기 직후, 전적 확인이 불편하지 않으셨나요?
+      <h2 style="font-size:1.1em; margin-bottom:10px;">
+        내전 전적을 볼 수 있는 곳이 없었습니다
       </h2>
-      <p style="font-size:0.68em; color:var(--muted); margin:0 0 4px;">
-        실사용 패턴 분석 결과 &mdash;
-        <strong style="color:var(--gold);">경기 중 · 직후 모바일 기기로 전적 확인하는 빈도가 압도적</strong>
-      </p>
-      <div class="compare-grid">
-        <div class="compare-card bad">
-          <h3>지금 (웹)</h3>
-          <ul>
-            <li><span>&#127760;</span> 브라우저 열고 URL 직접 입력</li>
-            <li><span>&#128432;</span> 마우스 기반 UI, 터치 조작 불편</li>
-            <li><span>&#128277;</span> 경기 결과 푸시 알림 없음</li>
-            <li><span>&#128245;</span> 오프라인 조회 불가</li>
-          </ul>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--red); border-radius:10px; padding:16px 18px;">
+          <div style="font-size:0.6em; color:var(--red); font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">왜 만들었나요?</div>
+          <p style="font-size:0.72em; color:var(--text); margin:0; line-height:1.7;">
+            Riot은 내전(사용자지정 게임) 데이터를 <strong style="color:var(--gold);">API로 제공하지 않습니다.</strong><br>
+            op.gg 같은 전적 사이트에서도 내전은 <strong style="color:var(--gold);">조회가 불가능</strong>해요.<br>
+            내전 전적을 체계적으로 관리할 방법이 없어서 <strong style="color:var(--gold);">직접 만들었습니다.</strong>
+          </p>
         </div>
-        <div class="compare-card good">
-          <h3>목표 (앱)</h3>
-          <ul>
-            <li><span>&#128241;</span> 홈 화면 아이콘 원터치 접근</li>
-            <li><span>&#128076;</span> 스와이프 · 터치 네이티브 UX</li>
-            <li><span>&#128276;</span> 경기 결과 Push Notification</li>
-            <li><span>&#128190;</span> TanStack Query 캐시 오프라인 지원</li>
-          </ul>
+        <div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--green); border-radius:10px; padding:16px 18px;">
+          <div style="font-size:0.6em; color:var(--green); font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">누가 사용하나요?</div>
+          <p style="font-size:0.72em; color:var(--text); margin:0; line-height:1.7;">
+            저 포함 <strong style="color:var(--gold);">내전을 함께 하는 지인들</strong>이 실제로 사용 중입니다.<br>
+            가상의 기획이 아닌 <strong style="color:var(--gold);">실사용 서비스</strong>예요.<br>
+            친구의 <strong style="color:var(--gold);">"앱으로 있으면 편할 것 같다"</strong>는 피드백으로 시작됐습니다.
+          </p>
+        </div>
+      </div>
+
+      <div style="background:var(--card); border:1px solid var(--border); border-top:3px solid var(--gold); border-radius:10px; padding:14px 20px;">
+        <div style="font-size:0.6em; color:var(--gold-dim); font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">웹 &rarr; 앱 전환 이유</div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; text-align:center;">
+          <div style="font-size:0.65em; color:var(--text);">&#127760;<br><span style="color:var(--muted);">URL 직접 입력</span><br><span style="color:var(--gold); font-size:0.9em;">&#8594; 원터치 접근</span></div>
+          <div style="font-size:0.65em; color:var(--text);">&#128432;<br><span style="color:var(--muted);">마우스 기반 UI</span><br><span style="color:var(--gold); font-size:0.9em;">&#8594; 터치 네이티브</span></div>
+          <div style="font-size:0.65em; color:var(--text);">&#128277;<br><span style="color:var(--muted);">알림 없음</span><br><span style="color:var(--gold); font-size:0.9em;">&#8594; Push 알림</span></div>
+          <div style="font-size:0.65em; color:var(--text);">&#128245;<br><span style="color:var(--muted);">오프라인 불가</span><br><span style="color:var(--gold); font-size:0.9em;">&#8594; 캐시 오프라인</span></div>
         </div>
       </div>
     </section>
