@@ -176,7 +176,7 @@
       padding: 24px;
       margin-top: 16px;
     }
-    .mermaid svg { width: 100% !important; height: auto; }
+    .mermaid svg { width: 100% !important; height: auto; overflow: visible; }
 
     /* ── Step list ── */
     .step-list { list-style: none; padding: 0; margin-top: 18px; }
@@ -271,6 +271,7 @@
       </p>
       <div class="mermaid-wrap">
         <pre class="mermaid">
+%%{init: {'flowchart': {'useMaxWidth': false, 'padding': 20}}}%%
 graph TD
   subgraph Client["클라이언트 (React Native · Expo)"]
     UI["화면 레이어<br/>Expo Router + NativeWind"]
