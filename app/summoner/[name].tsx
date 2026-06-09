@@ -191,7 +191,7 @@ const mr = StyleSheet.create({
 export default function SummonerScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
   const router = useRouter();
-  const { rankings, matches, loading, tierThresholds } = useRankings();
+  const { rankings, matches, loading, tierThresholds, cpMultipliers, cpSettings } = useRankings();
   const [visibleCount, setVisibleCount] = useState(10);
 
   const nickname = decodeURIComponent(name ?? '');
@@ -221,7 +221,7 @@ export default function SummonerScreen() {
 
   const matchCpInfo = useMemo(() => {
     return playerMatches.map(({ match }) => {
-      const results = calcMatchCp(match);
+      const results = calcMatchCp(match, cpSettings, cpMultipliers);
       const key = nickname.trim().toLowerCase();
       const myResult = results.find(r => r.nickname.trim().toLowerCase() === key);
       const sorted = [...results].sort((a, b) => b.cpScore - a.cpScore);
@@ -229,7 +229,7 @@ export default function SummonerScreen() {
       const isWorst = sorted[sorted.length - 1]?.nickname.trim().toLowerCase() === key;
       return { cpScore: myResult?.cpScore ?? null, isMvp, isWorst };
     });
-  }, [playerMatches, nickname]);
+  }, [playerMatches, nickname, cpSettings, cpMultipliers]);
 
   const champPool = useMemo<ChampPool[]>(() => {
     const map = new Map<string, ChampPool>();

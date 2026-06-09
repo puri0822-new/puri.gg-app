@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useMatches } from '../../src/hooks/useMatches';
+import { usePagedMatches } from '../../src/hooks/usePagedMatches';
 import { getChampionImageUrl } from '../../src/utils/championData';
 import type { Match, PlayerEntry } from '../../src/types/match';
 
@@ -211,7 +211,7 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 export default function RecordsScreen() {
-  const { matches, loading } = useMatches();
+  const { matches, loading, loadingMore, hasMore, loadMore } = usePagedMatches();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
@@ -303,6 +303,19 @@ export default function RecordsScreen() {
           }
           return <MatchCard match={item.match} />;
         }}
+        ListFooterComponent={
+          !selectedDate && hasMore ? (
+            <TouchableOpacity
+              style={s.loadMore}
+              onPress={loadMore}
+              disabled={loadingMore}
+            >
+              <Text style={s.loadMoreText}>
+                {loadingMore ? '불러오는 중...' : '더보기'}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -353,6 +366,10 @@ const s = StyleSheet.create({
   teamHeader:      { display: 'none' }, // 레이아웃용 (미사용)
   teams:           { flexDirection: 'row', padding: 14, gap: 8 },
   teamsDiv:        { width: 1, backgroundColor: C.border },
+
+  /* 더보기 */
+  loadMore:        { alignItems: 'center', paddingVertical: 14, borderWidth: 1, borderColor: C.border, borderRadius: 12, marginTop: 4 },
+  loadMoreText:    { fontSize: 13, fontWeight: '700', color: C.gold },
 
   /* 밴 */
   bans:            { borderTopWidth: 1, borderTopColor: C.border, padding: 12 },

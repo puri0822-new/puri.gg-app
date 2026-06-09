@@ -1,12 +1,17 @@
 import { useMemo, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, Image, ScrollView,
+  StyleSheet, SafeAreaView, Image, ScrollView, Dimensions,
 } from 'react-native';
-import { useMatches } from '../../src/hooks/useMatches';
+
+const CARD_WIDTH = Dimensions.get('window').width - 32 - 24;
+import { useRankings } from '../../src/hooks/useRankings';
 import { getChampionImageUrl } from '../../src/utils/championData';
-import { calcMatchCp } from '../../src/utils/cp';
-import type { Match, PlayerEntry, Position } from '../../src/types/match';
+import { calcMatchCp, type CpMultipliers, type CpSettings } from '../../src/utils/cp';
+import { getTierImage } from '../../src/utils/tierImages';
+import { getThresholdByElo } from '../../src/utils/elo';
+import type { EloEntry, TierThreshold } from '../../src/utils/elo';
+import type { Match, Position } from '../../src/types/match';
 
 const C = {
   background: '#0a0e1a',
@@ -85,67 +90,80 @@ const st = StyleSheet.create({
   tabTextActive: { color: '#0a0e1a' },
 });
 
-function SummaryRow({ matches }: { matches: Match[] }) {
-  const stats = useMemo(() => {
-    let totalKills = 0;
-    let totalDuration = 0;
-    let durationCount = 0;
-    const nickSet = new Set<string>();
-    const champSet = new Set<string>();
+function TopPicksAndBans({ matches }: { matches: Match[] }) {
+  const [tab, setTab] = useState<'pick' | 'ban'>('pick');
 
-    for (const m of matches) {
-      if (m.gameDurationSeconds) {
-        totalDuration += m.gameDurationSeconds;
-        durationCount++;
-      }
+  const topPicks = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of matches)
       for (const p of [...m.blueTeam, ...m.redTeam]) {
-        totalKills += parseInt(p.kills) || 0;
-        if (p.nickname.trim()) nickSet.add(p.nickname.trim().toLowerCase());
-        if (p.champion.trim()) champSet.add(p.champion.trim());
+        const c = p.champion.trim();
+        if (c) map.set(c, (map.get(c) ?? 0) + 1);
       }
-    }
-
-    const avgDuration = durationCount > 0
-      ? Math.round(totalDuration / durationCount / 60)
-      : null;
-
-    return {
-      totalGames: matches.length,
-      totalKills,
-      avgKillsPerGame: matches.length > 0 ? Math.round(totalKills / matches.length) : 0,
-      avgDuration,
-      totalPlayers: nickSet.size,
-      uniqueChamps: champSet.size,
-    };
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   }, [matches]);
 
-  const items = [
-    { label: '총 게임',    value: `${stats.totalGames}판` },
-    { label: '참여 인원',  value: `${stats.totalPlayers}명` },
-    { label: '사용 챔피언', value: `${stats.uniqueChamps}종` },
-    { label: '평균 킬',    value: `${stats.avgKillsPerGame}킬` },
-    ...(stats.avgDuration != null
-      ? [{ label: '평균 게임시간', value: `${stats.avgDuration}분` }]
-      : []),
-  ];
+  const topBans = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of matches) {
+      if (!m.bans) continue;
+      for (const c of [...m.bans.blue, ...m.bans.red]) {
+        const t = c.trim();
+        if (t) map.set(t, (map.get(t) ?? 0) + 1);
+      }
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  }, [matches]);
+
+  const list = tab === 'pick' ? topPicks : topBans;
+  const RANK_COLORS = ['#c8aa6e', '#a0a8b8', '#cd7f32'];
 
   return (
-    <View style={sr.grid}>
-      {items.map(item => (
-        <View key={item.label} style={sr.cell}>
-          <Text style={sr.value}>{item.value}</Text>
-          <Text style={sr.label}>{item.label}</Text>
-        </View>
-      ))}
+    <View style={tb.box}>
+      {/* 탭 버튼 */}
+      <View style={tb.tabs}>
+        <TouchableOpacity style={[tb.tab, tab === 'pick' && tb.tabActive]} onPress={() => setTab('pick')}>
+          <Text style={[tb.tabText, tab === 'pick' && tb.tabTextActive]}>MOST PICK</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[tb.tab, tab === 'ban' && tb.tabActive]} onPress={() => setTab('ban')}>
+          <Text style={[tb.tabText, tab === 'ban' && tb.tabTextActive]}>MOST BAN</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 리스트 */}
+      {list.length === 0 ? (
+        <Text style={tb.empty}>데이터 없음</Text>
+      ) : (
+        list.map(([champ, count], i) => (
+          <View key={champ} style={tb.item}>
+            <Text style={[tb.rankNum, { color: RANK_COLORS[i] }]}>{i + 1}</Text>
+            <Image
+              source={{ uri: getChampionImageUrl(champ) }}
+              style={[tb.champImg, tab === 'ban' && tb.banImg]}
+            />
+            <Text style={tb.champName} numberOfLines={1}>{champ}</Text>
+            <Text style={tb.count}>{count}회</Text>
+          </View>
+        ))
+      )}
     </View>
   );
 }
 
-const sr = StyleSheet.create({
-  grid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  cell:  { width: '30%', flexGrow: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  value: { fontSize: 18, fontWeight: '800', color: C.gold },
-  label: { fontSize: 10, color: C.muted, marginTop: 3 },
+const tb = StyleSheet.create({
+  box:          { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 20 },
+  tabs:         { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  tab:          { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border },
+  tabActive:    { borderColor: C.gold },
+  tabText:      { fontSize: 11, fontWeight: '700', color: C.muted },
+  tabTextActive:{ color: C.gold },
+  item:         { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  rankNum:      { width: 16, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  champImg:     { width: 34, height: 34, borderRadius: 6 },
+  banImg:       {},
+  champName:    { flex: 1, fontSize: 13, fontWeight: '700', color: C.gold },
+  count:        { fontSize: 12, color: C.muted },
+  empty:        { fontSize: 12, color: C.muted },
 });
 
 
@@ -183,12 +201,226 @@ const cr = StyleSheet.create({
   kdaVal: { width: 40, fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'right' },
 });
 
-const POSITION_FILTERS: PositionFilter[] = ['전체', '탑', '정글', '미드', '원딜', '서포터'];
+const POSITIONS: Position[] = ['탑', '정글', '미드', '원딜', '서포터'];
+const POSITION_FILTERS: PositionFilter[] = ['전체', ...POSITIONS];
+
+const RANK_COLORS = ['#c8aa6e', '#a0a8b8', '#cd7f32'];
+const RANK_LABELS = ['1ST', '2ND', '3RD'];
+
+const POS_COLORS: Record<Position, string> = {
+  탑:     '#c8aa6e',
+  정글:   '#5bc470',
+  미드:   '#4a9eff',
+  원딜:   '#ff6b6b',
+  서포터: '#c084fc',
+};
+
+interface PlayerPosStat {
+  nickname:    string;
+  games:       number;
+  wins:        number;
+  cpScores:    number[];
+  totalK:      number;
+  totalD:      number;
+  totalA:      number;
+  champCounts: Record<string, number>;
+}
+
+function PlayerCard({ stat, rankIdx, pos, rankings, tierThresholds }: {
+  stat:           PlayerPosStat;
+  rankIdx:        number;
+  pos:            Position;
+  rankings:       EloEntry[];
+  tierThresholds: TierThreshold[];
+}) {
+  const posColor  = POS_COLORS[pos];
+  const eloEntry  = rankings.find(r => r.nickname.toLowerCase() === stat.nickname.toLowerCase());
+  const threshold = getThresholdByElo(eloEntry?.elo ?? 1000, tierThresholds);
+  const tierImg   = getTierImage(threshold.image);
+
+  const wr     = Math.round((stat.wins / stat.games) * 100);
+  const kdaVal = stat.totalD === 0
+    ? stat.totalK + stat.totalA
+    : (stat.totalK + stat.totalA) / stat.totalD;
+  const avgCp  = stat.cpScores.length > 0
+    ? stat.cpScores.reduce((a, b) => a + b, 0) / stat.cpScores.length
+    : 0;
+
+  const topChamps = Object.entries(stat.champCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([champ]) => champ);
+
+  return (
+    <View style={[pt.card, { borderColor: posColor + '50' }]}>
+      {/* 상단: 티어·이름 / 순위 */}
+      <View style={pt.cardTop}>
+        <View style={pt.profileRow}>
+          {tierImg
+            ? <Image source={tierImg} style={pt.tierImg} />
+            : <View style={[pt.tierPlaceholder, { backgroundColor: posColor + '33' }]} />}
+          <Text style={pt.playerName} numberOfLines={1}>{stat.nickname}</Text>
+        </View>
+        <Text style={[pt.rankLabel, { color: RANK_COLORS[rankIdx] }]}>{RANK_LABELS[rankIdx]}</Text>
+      </View>
+
+      {/* 챔피언 초상화 3개 */}
+      <View style={pt.champsRow}>
+        {topChamps.map(champ => (
+          <Image key={champ} source={{ uri: getChampionImageUrl(champ) }} style={pt.champImg} />
+        ))}
+      </View>
+
+      {/* 하단 통계 */}
+      <View style={pt.statsRow}>
+        <View style={pt.statCell}>
+          <Text style={[pt.statVal, { color: wr >= 60 ? C.win : wr <= 49 ? C.lose : C.text }]}>{wr}%</Text>
+          <Text style={pt.statLabel}>{stat.games}판</Text>
+        </View>
+        <View style={pt.statDivider} />
+        <View style={pt.statCell}>
+          <Text style={pt.statVal}>{kdaVal.toFixed(2)}</Text>
+          <Text style={pt.statLabel}>KDA</Text>
+        </View>
+        <View style={pt.statDivider} />
+        <View style={pt.statCell}>
+          <Text style={[pt.statVal, avgCp >= 5.5 && { color: C.gold }]}>{avgCp.toFixed(2)}</Text>
+          <Text style={pt.statLabel}>CP</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function PlayerTab({ matches, rankings, tierThresholds, cpMultipliers, cpSettings }: {
+  matches:        Match[];
+  rankings:       EloEntry[];
+  tierThresholds: TierThreshold[];
+  cpMultipliers:  CpMultipliers;
+  cpSettings?:    CpSettings;
+}) {
+  const statsByPos = useMemo(() => {
+    const result = new Map<Position, Map<string, PlayerPosStat>>();
+    for (const pos of POSITIONS) result.set(pos, new Map());
+
+    for (const match of matches) {
+      const cpResults = calcMatchCp(match, cpSettings, cpMultipliers);
+      const cpByNick  = new Map(cpResults.map(r => [r.nickname.trim().toLowerCase(), r.cpScore]));
+
+      for (const [side, team] of [
+        ['blue', match.blueTeam] as const,
+        ['red',  match.redTeam]  as const,
+      ]) {
+        const won = match.winner === side;
+        for (const p of team) {
+          const pos = p.position as Position;
+          if (!POSITIONS.includes(pos)) continue;
+          const nick = p.nickname.trim();
+          if (!nick) continue;
+          const cp    = cpByNick.get(nick.toLowerCase());
+          const champ = p.champion.trim();
+          const map   = result.get(pos)!;
+          const prev  = map.get(nick) ?? { nickname: nick, games: 0, wins: 0, cpScores: [], totalK: 0, totalD: 0, totalA: 0, champCounts: {} };
+          const cpScores = cp !== undefined && cp > 0 ? [...prev.cpScores, cp] : prev.cpScores;
+          const champCounts = { ...prev.champCounts, ...(champ ? { [champ]: (prev.champCounts[champ] ?? 0) + 1 } : {}) };
+          map.set(nick, {
+            ...prev,
+            games:      prev.games + 1,
+            wins:       prev.wins + (won ? 1 : 0),
+            cpScores,
+            totalK:     prev.totalK + (parseInt(p.kills) || 0),
+            totalD:     prev.totalD + (parseInt(p.deaths) || 0),
+            totalA:     prev.totalA + (parseInt(p.assists) || 0),
+            champCounts,
+          });
+        }
+      }
+    }
+
+    const top3: Record<Position, PlayerPosStat[]> = {} as any;
+    for (const pos of POSITIONS) {
+      top3[pos] = [...result.get(pos)!.values()]
+        .filter(s => s.games >= 3)
+        .sort((a, b) => {
+          const aAvgCp = a.cpScores.length > 0 ? a.cpScores.reduce((x, y) => x + y, 0) / a.cpScores.length : 0;
+          const bAvgCp = b.cpScores.length > 0 ? b.cpScores.reduce((x, y) => x + y, 0) / b.cpScores.length : 0;
+          if (bAvgCp !== aAvgCp) return bAvgCp - aAvgCp;
+          const aElo = rankings.find(r => r.nickname.toLowerCase() === a.nickname.toLowerCase())?.elo ?? 1000;
+          const bElo = rankings.find(r => r.nickname.toLowerCase() === b.nickname.toLowerCase())?.elo ?? 1000;
+          return bElo - aElo;
+        })
+        .slice(0, 3);
+    }
+    return top3;
+  }, [matches, cpMultipliers, cpSettings]);
+
+  return (
+    <ScrollView contentContainerStyle={pt.scroll}>
+      {POSITIONS.map(pos => (
+        <View key={pos} style={pt.section}>
+          <Text style={[pt.sectionLabel, { color: POS_COLORS[pos] }]}>{pos.toUpperCase()}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={pt.cardRow}>
+            {statsByPos[pos].length === 0 ? (
+              <View style={[pt.emptyCard, { borderColor: POS_COLORS[pos] + '40' }]}>
+                <Text style={pt.emptyText}>데이터 없음 (3판 이상 필요)</Text>
+              </View>
+            ) : (
+              statsByPos[pos].map((s, i) => (
+                <PlayerCard
+                  key={s.nickname}
+                  stat={s}
+                  rankIdx={i}
+                  pos={pos}
+                  rankings={rankings}
+                  tierThresholds={tierThresholds}
+                />
+              ))
+            )}
+          </ScrollView>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+const pt = StyleSheet.create({
+  scroll:         { padding: 16, paddingBottom: 40 },
+  section:        { marginBottom: 24 },
+  sectionLabel:   { fontSize: 12, fontWeight: '900', letterSpacing: 3, marginBottom: 10 },
+  cardRow:        { gap: 12 },
+
+  card:           { width: CARD_WIDTH, backgroundColor: C.card, borderWidth: 1, borderRadius: 16, padding: 18 },
+
+  /* 상단 */
+  cardTop:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  topLeft:        { gap: 8 },
+  posLabel:       { fontSize: 11, fontWeight: '900', letterSpacing: 2 },
+  profileRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tierImg:        { width: 36, height: 36, resizeMode: 'contain' },
+  tierPlaceholder:{ width: 36, height: 36, borderRadius: 18 },
+  playerName:     { fontSize: 16, fontWeight: '800', color: C.gold },
+  rankLabel:      { fontSize: 13, fontWeight: '900', letterSpacing: 1 },
+
+  /* 챔피언 */
+  champsRow:      { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  champImg:       { width: 48, height: 48, borderRadius: 10 },
+
+  /* 통계 */
+  statsRow:       { flexDirection: 'row', alignItems: 'center', backgroundColor: C.background, borderRadius: 10, paddingVertical: 12 },
+  statCell:       { flex: 1, alignItems: 'center' },
+  statVal:        { fontSize: 16, fontWeight: '800', color: C.text },
+  statLabel:      { fontSize: 10, color: C.muted, marginTop: 3 },
+  statDivider:    { width: 1, height: 28, backgroundColor: C.border },
+
+  emptyCard:      { width: CARD_WIDTH, backgroundColor: C.card, borderWidth: 1, borderRadius: 16, padding: 14, alignItems: 'center', justifyContent: 'center', height: 160 },
+  emptyText:      { fontSize: 11, color: C.muted },
+});
 
 type SortKey = 'picks' | 'avgCp' | 'winRate' | 'kda';
 
 export default function StatsScreen() {
-  const { matches, loading } = useMatches();
+  const { matches, rankings, loading, tierThresholds, cpMultipliers, cpSettings } = useRankings();
+  const [mainTab, setMainTab] = useState<'champion' | 'player'>('champion');
   const [posFilter, setPosFilter] = useState<PositionFilter>('전체');
   const [sortKey, setSortKey] = useState<SortKey>('picks');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -200,6 +432,7 @@ export default function StatsScreen() {
       setSortKey(key);
       setSortDir('desc');
     }
+    setVisibleCount(10);
   };
 
   const champStats = useMemo(() => calcChampStats(matches, posFilter), [matches, posFilter]);
@@ -207,7 +440,7 @@ export default function StatsScreen() {
   const cpByChamp = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>();
     for (const match of matches) {
-      const cpResults = calcMatchCp(match);
+      const cpResults = calcMatchCp(match, cpSettings, cpMultipliers);
       const allPlayers = [...match.blueTeam, ...match.redTeam];
       allPlayers.forEach((p, i) => {
         const champ = p.champion.trim();
@@ -219,7 +452,7 @@ export default function StatsScreen() {
       });
     }
     return map;
-  }, [matches, posFilter]);
+  }, [matches, posFilter, cpMultipliers, cpSettings]);
 
   const getAvgCp = (champion: string) => {
     const entry = cpByChamp.get(champion);
@@ -236,16 +469,26 @@ export default function StatsScreen() {
     });
   }, [champStats, sortKey, sortDir, cpByChamp]);
 
+  const [visibleCount, setVisibleCount] = useState(10);
+
   type ListItem =
     | { type: 'summary' }
     | { type: 'champHeader' }
-    | { type: 'champ'; stat: ChampStat; rank: number };
+    | { type: 'champ'; stat: ChampStat; rank: number }
+    | { type: 'loadMore' };
 
-  const listData = useMemo<ListItem[]>(() => [
-    { type: 'summary' },
-    { type: 'champHeader' },
-    ...sorted.map((stat, i) => ({ type: 'champ' as const, stat, rank: i + 1 })),
-  ], [sorted]);
+  const listData = useMemo<ListItem[]>(() => {
+    const champItems = sorted
+      .slice(0, visibleCount)
+      .map((stat, i) => ({ type: 'champ' as const, stat, rank: i + 1 }));
+    const hasMore = visibleCount < sorted.length;
+    return [
+      { type: 'summary' },
+      { type: 'champHeader' },
+      ...champItems,
+      ...(hasMore ? [{ type: 'loadMore' as const }] : []),
+    ];
+  }, [sorted, visibleCount]);
 
   if (loading) {
     return (
@@ -259,14 +502,34 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={s.container}>
-      <FlatList
+      {/* 상단 탭 */}
+      <View style={s.mainTabs}>
+        <TouchableOpacity
+          style={[s.mainTab, mainTab === 'champion' && s.mainTabActive]}
+          onPress={() => setMainTab('champion')}
+        >
+          <Text style={[s.mainTabText, mainTab === 'champion' && s.mainTabTextActive]}>챔피언</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.mainTab, mainTab === 'player' && s.mainTabActive]}
+          onPress={() => setMainTab('player')}
+        >
+          <Text style={[s.mainTabText, mainTab === 'player' && s.mainTabTextActive]}>플레이어</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 플레이어 탭 */}
+      {mainTab === 'player' && <PlayerTab matches={matches} rankings={rankings} tierThresholds={tierThresholds} cpMultipliers={cpMultipliers} cpSettings={cpSettings} />}
+
+      {/* 챔피언 탭 */}
+      {mainTab === 'champion' && <FlatList
         data={listData}
         keyExtractor={(item, i) =>
           item.type === 'champ' ? `c-${item.stat.champion}` : `${item.type}-${i}`
         }
         contentContainerStyle={s.list}
         renderItem={({ item }) => {
-          if (item.type === 'summary') return <SummaryRow matches={matches} />;
+          if (item.type === 'summary') return <TopPicksAndBans matches={matches} />;
           if (item.type === 'champHeader') {
             return (
               <View style={s.champHeader}>
@@ -303,6 +566,13 @@ export default function StatsScreen() {
             );
           }
           if (item.type === 'champ') return <ChampRow stat={item.stat} rank={item.rank} avgCp={getAvgCp(item.stat.champion)} />;
+          if (item.type === 'loadMore') {
+            return (
+              <TouchableOpacity style={s.loadMore} onPress={() => setVisibleCount(v => v + 10)}>
+                <Text style={s.loadMoreText}>더보기 ({sorted.length - visibleCount}개 남음)</Text>
+              </TouchableOpacity>
+            );
+          }
           return null;
         }}
         ListEmptyComponent={
@@ -310,7 +580,7 @@ export default function StatsScreen() {
             <Text style={{ color: C.muted }}>데이터 없음</Text>
           </View>
         }
-      />
+      />}
     </SafeAreaView>
   );
 }
@@ -330,5 +600,14 @@ const s = StyleSheet.create({
   colSortBtn:      { flexDirection: 'row', alignItems: 'center', width: 48, justifyContent: 'flex-end' },
   colSortIcon:     { fontSize: 8, color: C.muted },
 
-  champList:       { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, overflow: 'hidden' },
+  champList:        { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, overflow: 'hidden' },
+  loadMore:         { alignItems: 'center', paddingVertical: 12, borderWidth: 1, borderColor: C.border, borderRadius: 12, marginTop: 4 },
+  loadMoreText:     { fontSize: 13, fontWeight: '700', color: C.gold },
+
+  /* 상단 메인 탭 */
+  mainTabs:         { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.border },
+  mainTab:          { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  mainTabActive:    { borderBottomWidth: 2, borderBottomColor: C.gold },
+  mainTabText:      { fontSize: 14, fontWeight: '600', color: C.muted },
+  mainTabTextActive:{ color: C.gold },
 });

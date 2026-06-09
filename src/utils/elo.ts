@@ -1,5 +1,5 @@
 import type { Match } from '../types/match';
-import { calcMatchCp, DEFAULT_CP_MULTIPLIERS, type CpMultipliers } from './cp';
+import { calcMatchCp, DEFAULT_CP_MULTIPLIERS, type CpMultipliers, type CpSettings } from './cp';
 
 export const INITIAL_ELO = 1000;
 export const K_FACTOR = 32;
@@ -86,6 +86,7 @@ export function calcEloRankings(
   kFactor = K_FACTOR,
   bonus: BonusSettings = DEFAULT_BONUS,
   cpMultipliers: CpMultipliers = DEFAULT_CP_MULTIPLIERS,
+  cpSettings?: CpSettings,
 ): EloEntry[] {
   const sorted = [...matches].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -147,7 +148,7 @@ export function calcEloRankings(
     applyTeam(redNames,  blueAvg, !blueWon, match);
 
     // CP 기반 보너스 (웹 버전 동일)
-    const cpResults = calcMatchCp(match, cpMultipliers);
+    const cpResults = calcMatchCp(match, cpSettings, cpMultipliers);
     const cpByNick  = new Map(
       cpResults.map(r => [r.nickname.trim().toLowerCase(), r.cpScore]),
     );

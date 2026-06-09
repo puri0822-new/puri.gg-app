@@ -85,7 +85,11 @@ function RankRow({ entry, rank, tierThresholds }: { entry: EloEntry; rank: numbe
       onPress={() => router.push(`/summoner/${encodeURIComponent(entry.nickname)}`)}
     >
       <Text style={s.rowRank}>{rank}</Text>
-      <View style={[s.rowDot, { backgroundColor: tierColor }]} />
+      <View style={[s.rowTierBadge, { backgroundColor: tierColor + '33' }]}>
+        {getTierImage(threshold.image)
+          ? <Image source={getTierImage(threshold.image)!} style={s.rowTierImg} />
+          : <Text style={[s.rowTierText, { color: tierColor }]}>{threshold.name[0]}</Text>}
+      </View>
       <View style={s.rowMain}>
         <Text style={s.rowName} numberOfLines={1}>{entry.nickname}</Text>
         <Text style={s.rowTier}>{threshold.name}</Text>
@@ -212,7 +216,9 @@ const s = StyleSheet.create({
   /* 랭킹 행 */
   row:           { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 6, gap: 10 },
   rowRank:       { width: 24, fontSize: 12, fontWeight: '700', color: C.muted, textAlign: 'center' },
-  rowDot:        { width: 8, height: 8, borderRadius: 4 },
+  rowTierBadge:  { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  rowTierImg:    { width: 26, height: 26, resizeMode: 'contain' },
+  rowTierText:   { fontSize: 11, fontWeight: '800' },
   rowMain:       { flex: 1 },
   rowName:       { fontSize: 14, fontWeight: '700', color: C.gold },
   rowTier:       { fontSize: 11, color: C.muted, marginTop: 2 },

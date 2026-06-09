@@ -23,6 +23,8 @@ export const POSITION_FORMULAS: Record<Position, PositionFormula> = {
 export type MetricKey = 'vspm' | 'dpm' | 'dtpm' | 'ccpm' | 'kp' | 'dpg' | 'piwa';
 export type CpMultiplierMap = Record<MetricKey, number>;
 export type CpMultipliers   = Record<Position, CpMultiplierMap>;
+export type WeightMap       = Record<MetricKey, number>;
+export type CpSettings      = Record<Position, WeightMap>;
 
 const _one = (): CpMultiplierMap =>
   ({ dpm: 1, vspm: 1, ccpm: 1, dtpm: 1, kp: 1, piwa: 1, dpg: 1 });
@@ -80,7 +82,35 @@ function applyFormula(
 
 const FALLBACK_POS: Position[] = ['탑', '정글', '미드', '원딜', '서포터'];
 
-export function calcMatchCp(match: Match, multipliers: CpMultipliers = DEFAULT_CP_MULTIPLIERS): PlayerCpResult[] {
+function settingsToFormula(w: WeightMap): PositionFormula {
+  return {
+    vspmRef: w.vspm,
+    dpmRef:  w.dpm,
+    dtpmRef: w.dtpm,
+    ccpmRef: w.ccpm,
+    kpW:     w.kp,
+    dpgRef:  w.dpg,
+    piwaRef: w.piwa,
+  };
+}
+
+export function calcPlayerCpForPosition(
+  p: PlayerEntry,
+  pos: Position,
+  minutes: number,
+  teamKills: number,
+  multipliers: CpMultipliers = DEFAULT_CP_MULTIPLIERS,
+): number {
+  const formula = POSITION_FORMULAS[pos];
+  const raw     = calcRawMetrics(p, minutes, teamKills);
+  return Math.round(applyFormula(raw, formula, multipliers[pos]) * 100) / 100;
+}
+
+export function calcMatchCp(
+  match: Match,
+  settings?: CpSettings,
+  multipliers: CpMultipliers = DEFAULT_CP_MULTIPLIERS,
+): PlayerCpResult[] {
   const minutes    = (match.gameDurationSeconds ?? DEFAULT_DURATION_SECONDS) / 60;
   const allPlayers = [...match.blueTeam, ...match.redTeam];
   const blueKills  = match.blueTeam.reduce((s, p) => s + (Number(p.kills) || 0), 0);
@@ -88,7 +118,7 @@ export function calcMatchCp(match: Match, multipliers: CpMultipliers = DEFAULT_C
 
   return allPlayers.map((p, i) => {
     const pos: Position = (p.position as Position) || FALLBACK_POS[i % 5];
-    const formula = POSITION_FORMULAS[pos];
+    const formula = settings ? settingsToFormula(settings[pos]) : POSITION_FORMULAS[pos];
     const teamKills = i < 5 ? blueKills : redKills;
     const raw = calcRawMetrics(p, minutes, teamKills);
     const total = applyFormula(raw, formula, multipliers[pos]);

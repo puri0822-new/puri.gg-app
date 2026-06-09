@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DEFAULT_TIER_THRESHOLDS, DEFAULT_BONUS, type TierThreshold, type BonusSettings } from '../utils/elo';
-import { DEFAULT_CP_MULTIPLIERS, type CpMultipliers } from '../utils/cp';
+import { DEFAULT_CP_MULTIPLIERS, type CpMultipliers, type CpSettings } from '../utils/cp';
 
 interface AppSettings {
   kFactor:        number;
@@ -11,6 +11,7 @@ interface AppSettings {
   aceMinCp:       number;
   tierThresholds: TierThreshold[];
   cpMultipliers:  CpMultipliers;
+  cpSettings?:    CpSettings;
 }
 
 export function useSettings() {
@@ -18,6 +19,7 @@ export function useSettings() {
   const [bonus, setBonus]                   = useState<BonusSettings>(DEFAULT_BONUS);
   const [tierThresholds, setTierThresholds] = useState<TierThreshold[]>(DEFAULT_TIER_THRESHOLDS);
   const [cpMultipliers, setCpMultipliers]   = useState<CpMultipliers>(DEFAULT_CP_MULTIPLIERS);
+  const [cpSettings, setCpSettings]         = useState<CpSettings | undefined>(undefined);
   const [loading, setLoading]               = useState(true);
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export function useSettings() {
           if (data.kFactor)                setKFactor(data.kFactor);
           if (data.tierThresholds?.length) setTierThresholds(data.tierThresholds);
           if (data.cpMultipliers)          setCpMultipliers(data.cpMultipliers);
+          if (data.cpSettings)             setCpSettings(data.cpSettings);
           setBonus({
             winBonus: data.winBonus ?? DEFAULT_BONUS.winBonus,
             aceBonus: data.aceBonus ?? DEFAULT_BONUS.aceBonus,
@@ -42,5 +45,5 @@ export function useSettings() {
     return () => unsub();
   }, []);
 
-  return { kFactor, bonus, tierThresholds, cpMultipliers, loading };
+  return { kFactor, bonus, tierThresholds, cpMultipliers, cpSettings, loading };
 }

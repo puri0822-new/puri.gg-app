@@ -12,7 +12,7 @@ interface AdminAdjustment {
 
 export function useRankings() {
   const { matches, loading: matchesLoading } = useMatches();
-  const { kFactor, bonus, tierThresholds, cpMultipliers, loading: settingsLoading } = useSettings();
+  const { kFactor, bonus, tierThresholds, cpMultipliers, cpSettings, loading: settingsLoading } = useSettings();
   const [adjustments, setAdjustments]        = useState<AdminAdjustment[]>([]);
   const [adjLoading, setAdjLoading]          = useState(true);
 
@@ -29,7 +29,7 @@ export function useRankings() {
   }, []);
 
   const rankings = useMemo<EloEntry[]>(() => {
-    const base = calcEloRankings(matches, kFactor, bonus, cpMultipliers);
+    const base = calcEloRankings(matches, kFactor, bonus, cpMultipliers, cpSettings);
 
     // 관리자 조정 합산 (닉네임 소문자 기준)
     const deltaMap = new Map<string, number>();
@@ -44,7 +44,7 @@ export function useRankings() {
         return delta !== 0 ? { ...entry, elo: entry.elo + delta } : entry;
       })
       .sort((a, b) => b.elo - a.elo);
-  }, [matches, kFactor, bonus, cpMultipliers, adjustments]);
+  }, [matches, kFactor, bonus, cpMultipliers, cpSettings, adjustments]);
 
   return {
     rankings,
@@ -53,5 +53,7 @@ export function useRankings() {
     tierThresholds,
     kFactor,
     bonus,
+    cpMultipliers,
+    cpSettings,
   };
 }
