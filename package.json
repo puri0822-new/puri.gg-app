@@ -3,10 +3,13 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "APP_ENV=dev expo start",
+    "start:dev": "APP_ENV=dev expo start",
+    "start:staging": "APP_ENV=staging expo start",
+    "start:prod": "APP_ENV=prod expo start",
+    "android": "APP_ENV=dev expo start --android",
+    "ios": "APP_ENV=dev expo start --ios",
+    "web": "APP_ENV=dev expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "dotenv": "^17.4.2",
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   },

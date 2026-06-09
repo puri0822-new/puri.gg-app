@@ -30,8 +30,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# env files — .env.example 만 커밋, 실제 환경변수는 절대 커밋 금지
+.env
+.env.local
 .env*.local
+.env.dev
+.env.staging
+.env.prod
 
 # typescript
 *.tsbuildinfo
