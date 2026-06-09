@@ -16,6 +16,9 @@ on:
           - preview
           - release
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Android APK 빌드
