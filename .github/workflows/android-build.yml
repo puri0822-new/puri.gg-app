@@ -21,6 +21,10 @@ jobs:
     name: Android APK 빌드
     runs-on: ubuntu-latest
 
+    env:
+      BUILD_PROFILE: ${{ github.event.inputs.profile || 'release' }}
+      TAG_NAME: ${{ github.ref_name || 'manual' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,32 +47,29 @@ jobs:
       - name: Android APK 빌드
         id: eas-build
         run: |
-          PROFILE=${{ github.event.inputs.profile || 'release' }}
-          echo "Building with profile: $PROFILE"
+          echo "Building with profile: $BUILD_PROFILE"
           BUILD_OUTPUT=$(eas build \
             --platform android \
-            --profile $PROFILE \
+            --profile "$BUILD_PROFILE" \
             --non-interactive \
             --json \
             --wait)
           BUILD_URL=$(echo "$BUILD_OUTPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['artifacts']['buildUrl'])")
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
-          echo "Build URL: $BUILD_URL"
 
       - name: APK 다운로드
         run: |
-          wget -O puri-gg-${{ github.ref_name || github.event.inputs.profile }}.apk \
-            "${{ steps.eas-build.outputs.build_url }}"
+          wget -O "puri-gg-${TAG_NAME}.apk" "${{ steps.eas-build.outputs.build_url }}"
 
       - name: GitHub Release 생성
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || format('build-{0}', github.run_number) }}
-          name: ${{ github.ref_name || format('Build #{0}', github.run_number) }}
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.TAG_NAME }}
           body: |
             ## puri.gg Android APK
 
-            **빌드 프로필:** ${{ github.event.inputs.profile || 'release' }}
+            **빌드 프로필:** ${{ env.BUILD_PROFILE }}
             **커밋:** ${{ github.sha }}
 
             ### 설치 방법
