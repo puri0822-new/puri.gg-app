@@ -30,6 +30,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          headerShown: false,
           title: '검색',
           tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
         }}
