@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "puri.gg-app",
-    "slug": "puri.gg-app",
+    "slug": "purigg",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -36,6 +36,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6a367598-5ca5-4d4a-a0d5-bf5b791ab324"
+      }
+    },
+    "owner": "puri0822"
   }
 }
