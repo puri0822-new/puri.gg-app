@@ -1,0 +1,81 @@
+name: Android Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: '빌드 프로필'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - preview
+          - release
+
+jobs:
+  build:
+    name: Android APK 빌드
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: EAS CLI 설정
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EAS_TOKEN }}
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: Android APK 빌드
+        id: eas-build
+        run: |
+          PROFILE=${{ github.event.inputs.profile || 'release' }}
+          echo "Building with profile: $PROFILE"
+          BUILD_OUTPUT=$(eas build \
+            --platform android \
+            --profile $PROFILE \
+            --non-interactive \
+            --json \
+            --wait)
+          BUILD_URL=$(echo "$BUILD_OUTPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['artifacts']['buildUrl'])")
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+          echo "Build URL: $BUILD_URL"
+
+      - name: APK 다운로드
+        run: |
+          wget -O puri-gg-${{ github.ref_name || github.event.inputs.profile }}.apk \
+            "${{ steps.eas-build.outputs.build_url }}"
+
+      - name: GitHub Release 생성
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || format('build-{0}', github.run_number) }}
+          name: ${{ github.ref_name || format('Build #{0}', github.run_number) }}
+          body: |
+            ## puri.gg Android APK
+
+            **빌드 프로필:** ${{ github.event.inputs.profile || 'release' }}
+            **커밋:** ${{ github.sha }}
+
+            ### 설치 방법
+            1. 아래 APK 파일 다운로드
+            2. Android 설정 → 보안 → "알 수 없는 출처" 허용
+            3. 다운로드한 APK 파일 실행하여 설치
+          files: puri-gg-*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
