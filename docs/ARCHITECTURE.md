@@ -1,106 +1,129 @@
-# ARCHITECTURE — puri.gg Mobile
-**시스템 아키텍처 문서 v1.0**
-작성일: 2026-04-28
+# 시스템 아키텍처
 
 ---
 
-## 1. 전체 시스템 구조도
+## 1. 전체 구조도
 
 ```mermaid
 graph TD
-  subgraph Client["클라이언트 (React Native · Expo)"]
-    UI["화면 레이어\n(Expo Router + NativeWind)"]
-    Hooks["상태/데이터 레이어\n(TanStack Query 커스텀 훅)"]
-    Utils["비즈니스 로직\n(ELO · CP · 통계 유틸)"]
-    Cache["로컬 캐시\n(TanStack Query Memory Cache)"]
+  subgraph App["모바일 앱 (Expo · React Native)"]
+    Screen["화면 레이어\nExpo Router 파일 기반 라우팅"]
+    Hooks["데이터 레이어\n커스텀 훅 (useState + onSnapshot)"]
+    Utils["비즈니스 로직\nELO · CP · 챔피언 유틸"]
   end
 
-  subgraph Firebase["백엔드 (Firebase)"]
-    Firestore["Cloud Firestore\n(matches · elo_histories)"]
-    Auth["Firebase Auth\n(관리자 인증)"]
+  subgraph Firebase["Firebase (백엔드)"]
+    Firestore["Cloud Firestore\nmatches · settings · eloHistory"]
+    Auth["Firebase Auth\n초기화만 (미사용)"]
   end
 
   subgraph External["외부 서비스"]
-    DDragon["Riot Data Dragon\n(챔피언 이미지 CDN)"]
+    DDragon["Riot Data Dragon CDN\n챔피언 이미지"]
   end
 
-  UI --> Hooks
+  Screen -->|useRankings · useMatches| Hooks
+  Hooks -->|onSnapshot 실시간 구독| Firestore
   Hooks --> Utils
-  Hooks --> Cache
-  Hooks --> Firestore
-  Hooks --> Auth
-  UI --> DDragon
+  Utils -->|CP · ELO 계산| Hooks
+  Screen -->|이미지 URL| DDragon
 ```
 
 ---
 
-## 2. 레이어별 설명
+## 2. 레이어별 책임
 
-### 2.1 화면 레이어 (Presentation Layer)
+### 2.1 화면 레이어 — `app/`
 
-Expo Router의 파일 기반 라우팅으로 화면을 구성합니다. NativeWind를 통해 웹과 동일한 Tailwind 유틸리티 클래스 문법으로 스타일을 적용하여 웹-앱 간 디자인 일관성을 유지합니다.
+Expo Router의 파일 기반 라우팅. 각 파일이 하나의 화면.
 
 ```
 app/
+├── _layout.tsx              # 루트 레이아웃
 ├── (tabs)/
-│   ├── _layout.tsx        # Bottom Tab Navigator
-│   ├── index.tsx          # 홈 (검색)
-│   ├── leaderboard.tsx    # 리더보드
-│   ├── records.tsx        # 전적 목록
-│   └── stats.tsx          # 통계
-├── summoner/
-│   └── [name].tsx         # 소환사 상세
-└── _layout.tsx            # 루트 레이아웃 (QueryClientProvider)
+│   ├── _layout.tsx          # Bottom Tab Navigator (홈·리더보드·전적·통계)
+│   ├── index.tsx            # 홈: 소환사 검색 + ELO TOP 1 + Most Pick
+│   ├── leaderboard.tsx      # ELO 리더보드 전체 (포디움 + 랭킹 목록)
+│   ├── records.tsx          # 전적 목록 (커서 페이지네이션)
+│   └── stats.tsx            # 챔피언 통계 + 포지션별 플레이어 TOP 3
+└── summoner/[name].tsx      # 소환사 상세: 프로필 · 전적 · MOST 3챔피언
 ```
 
-### 2.2 데이터 레이어 (Data Layer)
+**책임:** UI 렌더링, 사용자 이벤트 처리, 화면 간 네비게이션
+**금지:** 비즈니스 로직 직접 수행, Firestore 직접 호출
 
-TanStack Query가 Firestore 비동기 요청을 관리합니다. 각 화면은 도메인별 커스텀 훅을 통해 데이터를 소비하며, 컴포넌트는 데이터 페칭 로직을 직접 알지 못합니다.
+---
+
+### 2.2 데이터 레이어 — `src/hooks/`
+
+Firestore 실시간 구독을 담당하는 커스텀 훅.
 
 ```
 src/hooks/
-├── useMatches.ts          # 전체 경기 목록
-├── useLeaderboard.ts      # ELO 랭킹 (산출 포함)
-└── useSummoner.ts         # 소환사별 통계
+├── useMatches.ts        # 전체 경기 목록 (onSnapshot, ELO 계산용)
+├── usePagedMatches.ts   # 전적 페이지 전용 커서 페이지네이션 (getDocs)
+├── useSettings.ts       # Firebase 설정 (cpMultipliers · cpSettings · tierThresholds)
+└── useRankings.ts       # ELO 랭킹 산출 (useMatches + useSettings 조합)
 ```
 
-### 2.3 비즈니스 로직 레이어 (Domain Layer)
+| 훅 | 데이터 소스 | 방식 | 용도 |
+|---|---|---|---|
+| `useMatches` | Firestore/matches | `onSnapshot` | ELO 계산용 전체 데이터 |
+| `usePagedMatches` | Firestore/matches | `getDocs` + cursor | 전적 페이지 페이지네이션 |
+| `useSettings` | Firestore/settings | `onSnapshot` | CP 공식·티어 설정 실시간 반영 |
+| `useRankings` | useMatches + useSettings | 조합 | 화면에서 사용하는 최종 랭킹 |
 
-기존 Next.js 웹 서비스의 유틸 함수를 플랫폼 독립적인 순수 TypeScript로 이식합니다. React Native의 플랫폼 API에 의존하지 않으므로 웹·앱 간 공유가 가능합니다.
+**책임:** Firestore 구독·해제, 로딩 상태 관리, 데이터 정규화
+**금지:** UI 렌더링, 비즈니스 계산
+
+---
+
+### 2.3 비즈니스 로직 레이어 — `src/utils/`
+
+순수 TypeScript 함수. React·Firebase 의존성 없음.
 
 ```
 src/utils/
-├── calculateElo.ts        # ELO 점수 산출
-├── calculateStats.ts      # 소환사/챔피언 통계
-├── cp.ts                  # CP(공헌도 점수) 계산
-└── ddragon.ts             # Data Dragon URL 생성
+├── elo.ts            # ELO 점수 계산 (K-factor · 보너스 · 히스토리)
+├── cp.ts             # CP(기여도 포인트) 계산 (포지션별 공식 적용)
+├── championData.ts   # 한글 챔피언명 → DDragon 영문명 매핑
+└── tierImages.ts     # ELO 구간 → 티어 이미지 매핑
+```
+
+**책임:** 도메인 계산 로직 (ELO · CP · 통계)
+**금지:** 상태 관리, 네트워크 호출
+
+---
+
+### 2.4 타입 레이어 — `src/types/`
+
+```
+src/types/
+└── match.ts    # Match · PlayerEntry · Position 타입 정의
 ```
 
 ---
 
-## 3. 데이터 흐름도
+## 3. 데이터 흐름
 
 ```mermaid
 sequenceDiagram
   actor User
-  participant Screen as 화면 (React Native)
-  participant Hook as 커스텀 훅 (TanStack Query)
-  participant Cache as 메모리 캐시
+  participant Screen as 화면
+  participant Hook as 커스텀 훅
   participant Firestore as Cloud Firestore
+  participant Utils as 유틸 (ELO·CP)
 
-  User->>Screen: 앱 진입 / 화면 이동
-  Screen->>Hook: useLeaderboard() 호출
-  Hook->>Cache: 캐시 확인 (staleTime 5분)
-  alt 캐시 유효
-    Cache-->>Screen: 캐시 데이터 즉시 반환
-  else 캐시 만료 또는 없음
-    Hook->>Firestore: matches 컬렉션 구독
-    Firestore-->>Hook: 경기 데이터 스트림
-    Hook->>Hook: ELO / 통계 재산출
-    Hook->>Cache: 결과 캐시 저장
-    Hook-->>Screen: 최신 데이터 반환
-  end
-  Screen->>User: UI 렌더링
+  User->>Screen: 앱 진입
+  Screen->>Hook: useRankings() 호출
+  Hook->>Firestore: matches 구독 (onSnapshot)
+  Hook->>Firestore: settings 구독 (onSnapshot)
+  Firestore-->>Hook: 실시간 데이터 스트림
+  Hook->>Utils: calcEloRankings(matches, cpSettings, cpMultipliers)
+  Utils-->>Hook: 랭킹 배열 반환
+  Hook-->>Screen: rankings, matches, loading
+  Screen->>User: ELO 리더보드 렌더링
+
+  Note over Firestore,Hook: Firestore 데이터 변경 시 자동 재계산
 ```
 
 ---
@@ -109,87 +132,69 @@ sequenceDiagram
 
 ```
 /matches/{matchId}
-  ├── date: string          # "2026-04-28"
+  ├── date: string                  # "2026-04-28T..."
   ├── winner: "blue" | "red"
-  ├── blueTeam: Player[]
-  └── redTeam: Player[]
+  ├── gameDurationSeconds: number
+  ├── blueTeam: PlayerEntry[]
+  ├── redTeam:  PlayerEntry[]
+  └── bans?: { blue: string[], red: string[] }
 
-Player {
-  nickname: string
-  champion: string
-  position: string
-  kills: number
-  deaths: number
-  assists: number
+PlayerEntry {
+  nickname:       string
+  champion:       string
+  position:       "탑" | "정글" | "미드" | "원딜" | "서포터"
+  kills:          string
+  deaths:         string
+  assists:        string
+  damageDealt:    string
+  receivedDamage: string
+  gold:           string
+  visionScore:    string
+  cc:             string
+  pinkWardCount:  string
 }
 
-/elo_histories/{docId}
-  ├── playerName: string
-  ├── changeAmount: number
-  ├── reason: string
-  └── createdAt: Timestamp
+/settings/global_config
+  ├── kFactor:        number
+  ├── tierThresholds: TierThreshold[]
+  ├── cpMultipliers:  Record<Position, Record<MetricKey, number>>
+  └── cpSettings:     Record<Position, Record<MetricKey, number>>
+
+/eloHistory/{docId}
+  ├── playerName:   string
+  └── changeAmount: number
 ```
 
 ---
 
-## 5. ADR (Architecture Decision Records)
+## 5. 주요 설계 결정 (ADR)
 
-### ADR-001: React Native (Expo) 채택
+### ADR-001: 읽기 전용 클라이언트
 
-**날짜**: 2026-04-28
-**상태**: 승인됨
+**결정:** 모바일 앱은 Firestore 읽기만 수행. 쓰기는 웹 어드민에서만.
 
-**맥락**
-기존 웹을 모바일로 확장할 때 Flutter, Swift/Kotlin 네이티브, React Native 세 가지 선택지를 검토했습니다.
-
-**결정**
-React Native (Expo) 채택.
-
-**근거**
-- 기존 웹 코드베이스가 TypeScript + React 기반이므로 **팀의 학습 비용이 최소화**됩니다.
-- 비즈니스 로직(`calculateElo.ts`, `cp.ts` 등)을 **그대로 이식** 가능합니다.
-- Expo EAS Build로 iOS · Android를 **단일 코드베이스**에서 빌드할 수 있습니다.
-- Flutter는 Dart 학습 비용, 네이티브는 플랫폼별 이중 유지보수 비용이 발생합니다.
-
-**트레이드오프**
-- 고성능 애니메이션이 필요한 경우 네이티브 대비 제약이 있으나, 본 서비스는 리스트/카드 중심 UI로 해당 없음.
+**근거:** 클라이언트가 데이터를 변조할 수 없으므로 보안 레이어가 단순해집니다.
 
 ---
 
-### ADR-002: TanStack Query 채택
+### ADR-002: onSnapshot 실시간 구독
 
-**날짜**: 2026-04-28
-**상태**: 승인됨
+**결정:** TanStack Query 없이 Firebase `onSnapshot`을 직접 사용.
 
-**맥락**
-Firestore 실시간 구독과 상태 관리를 위해 Zustand + 직접 구독, Redux Toolkit Query, TanStack Query 세 가지를 검토했습니다.
-
-**결정**
-TanStack Query 채택.
-
-**근거**
-- `staleTime` / `gcTime` 설정만으로 **오프라인 캐시 전략**을 선언적으로 구성할 수 있습니다.
-- `useQuery` 훅이 로딩·에러·성공 상태를 **자동 관리**하여 보일러플레이트를 줄입니다.
-- Firestore `onSnapshot` 리스너를 `queryClient.setQueryData`와 결합하면 **실시간 업데이트**를 캐시 레이어에 통합할 수 있습니다.
-- 기존 웹 서비스에서도 동일 라이브러리를 사용하므로 팀 내 학습 곡선이 없습니다.
-
-**트레이드오프**
-- 단순 전역 상태(설정값 등)는 TanStack Query보다 Zustand가 적합하나, 해당 케이스는 `AsyncStorage`로 충분히 처리 가능.
+**근거:** Firestore 실시간 구독은 `onSnapshot`이 네이티브 지원. 추가 캐시 레이어 없이도 변경사항이 즉시 반영됩니다.
 
 ---
 
-### ADR-003: NativeWind 채택
+### ADR-003: 전적 페이지만 커서 페이지네이션 분리
 
-**날짜**: 2026-04-28
-**상태**: 승인됨
+**결정:** ELO 계산용 `useMatches`는 전체 로드 유지. 전적 표시용 `usePagedMatches`만 20개씩 페이지네이션.
 
-**맥락**
-모바일 스타일링 방식으로 StyleSheet API, Styled Components, NativeWind를 검토했습니다.
+**근거:** ELO는 전체 경기 이력이 있어야 정확히 계산됩니다. 전적 표시는 최신 순 일부만 필요합니다.
 
-**결정**
-NativeWind v4 채택.
+---
 
-**근거**
-- 기존 웹의 Tailwind CSS 클래스를 **동일한 문법**으로 재사용하여 디자인 일관성을 보장합니다.
-- LoL 골드 테마(`#c8aa6e`) 등 CSS 변수를 `tailwind.config.js`에서 공유할 수 있습니다.
-- StyleSheet API보다 **빠른 프로토타이핑**이 가능합니다.
+### ADR-004: Expo (React Native) 채택
+
+**결정:** Flutter·네이티브 대신 Expo + React Native.
+
+**근거:** 기존 웹(TypeScript + React)의 비즈니스 로직(`elo.ts`, `cp.ts`)을 그대로 이식. 단일 코드베이스로 Android 배포.
