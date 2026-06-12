@@ -71,6 +71,22 @@ export default function HomeScreen() {
     return { champion, picks: count, winRate: Math.round((wins / count) * 100) };
   }, [matches]);
 
+  const topBan = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of matches) {
+      const bans = [...(m.bans?.blue ?? []), ...(m.bans?.red ?? [])];
+      for (const champ of bans) {
+        const name = champ.trim();
+        if (!name) continue;
+        map.set(name, (map.get(name) ?? 0) + 1);
+      }
+    }
+    if (!map.size) return null;
+    const [champion, count] = [...map.entries()].sort((a, b) => b[1] - a[1])[0];
+    const banRate = matches.length > 0 ? Math.round((count / matches.length) * 100) : 0;
+    return { champion, bans: count, banRate };
+  }, [matches]);
+
   const handleSelect = (nickname: string) => {
     setQuery('');
     setFocused(false);
@@ -192,6 +208,21 @@ export default function HomeScreen() {
               <Text style={[s.cardSub, { color: topChampion.winRate >= 50 ? C.win : C.lose }]}>
                 승률 {topChampion.winRate}%
               </Text>
+            </View>
+          </View>
+        ) : <Text style={{ color: C.empty }}>데이터 없음</Text>}
+      </TouchableOpacity>
+
+      {/* Most Ban */}
+      <TouchableOpacity style={s.card} onPress={() => router.push('/(tabs)/stats')}>
+        <Text style={s.cardTitle}>Most Ban TOP 1</Text>
+        {topBan ? (
+          <View style={s.cardRow}>
+            <Image source={{ uri: getChampionImageUrl(topBan.champion) }} style={s.champImg} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardName}>{topBan.champion}</Text>
+              <Text style={s.cardSub}>{topBan.bans}회 밴</Text>
+              <Text style={[s.cardSub, { color: C.lose }]}>밴율 {topBan.banRate}%</Text>
             </View>
           </View>
         ) : <Text style={{ color: C.empty }}>데이터 없음</Text>}
